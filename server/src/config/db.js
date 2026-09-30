@@ -58,6 +58,22 @@ const connectDB = async () => {
       }
     }
 
+    // If local or remote database is not running, fall back to embedded in-memory database in development mode
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+      try {
+        console.warn('⚠️  Local MongoDB unavailable. Launching embedded in-memory MongoDB for development...');
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const memServer = await MongoMemoryServer.create();
+        const memUri = memServer.getUri();
+        cachedConnection = mongoose.connect(memUri);
+        const conn = await cachedConnection;
+        console.log(`✅ MongoDB Connected (In-Memory Development Server): ${memUri}`);
+        return conn;
+      } catch (memErr) {
+        console.error('Failed to launch in-memory MongoDB:', memErr.message);
+      }
+    }
+
     cachedConnection = null;
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
     console.error('👉 Ensure your MongoDB server is running or your MongoDB Atlas URI & IP whitelist are configured.');
